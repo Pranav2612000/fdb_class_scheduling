@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-foundationdb = "0.10.0"
+foundationdb = { version = "0.10.0", features = ["embedded-fdb-include", "fdb-6_3"] }
