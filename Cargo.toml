@@ -1,0 +1,7 @@
+[package]
+name = "fdb_class_scheduling"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+foundationdb = "0.10.0"
