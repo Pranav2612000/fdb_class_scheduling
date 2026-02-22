@@ -1,6 +1,27 @@
 use foundationdb::api::FdbApiBuilder;
 use foundationdb::directory::Directory;
-use foundationdb::directory::DirectoryOutput::DirectorySubspace;
+use foundationdb::tuple::pack;
+
+const LEVELS: &[&str] = &[
+    "intro",
+    "for dummies",
+    "remedial",
+    "101",
+    "201",
+    "301",
+    "mastery",
+    "lab",
+    "seminar",
+];
+
+const TYPES: &[&str] = &[
+    "chem", "bio", "cs", "geometry", "calc", "alg", "film", "music", "art", "dance",
+];
+
+const TIMES: &[&str] = &[
+    "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00", "9:00", "10:00", "11:00", "12:00",
+    "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00",
+];
 
 #[tokio::main]
 async fn main() {
@@ -34,10 +55,20 @@ async fn class_scheduling_example() -> foundationdb::FdbResult<()> {
         .create_or_open(&trx, &path, None, None)
         .await
         .expect("failed to create directory");
-    let scheduling = match scheduling {
-        DirectorySubspace(d) => d,
-        _ => panic!("did not create a subspace"),
-    };
+
+    // Add classes to the class subspace
+    let class_subspace = scheduling
+        .subspace(&"classes")
+        .expect("should get class subspace");
+    trx.clear_subspace_range(&class_subspace);
+    for level in LEVELS {
+        for subject in TYPES {
+            for time in TIMES {
+                let class_name = format!("{time} {subject} {level}");
+                trx.set(&class_subspace.pack(&class_name), &pack(&100_i64));
+            }
+        }
+    }
     trx.commit().await?;
 
     Ok(())
