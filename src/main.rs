@@ -173,3 +173,43 @@ async fn signup(db: &Database, student: &str, class_name: &str) -> foundationdb:
 
     Ok(())
 }
+
+async fn drop(db: &Database, student: &str, class_name: &str) -> foundationdb::FdbResult<()> {
+    let trx = db.create_trx().expect("could not start transaction");
+    let directory = foundationdb::directory::DirectoryLayer::default();
+    let path = vec![String::from("scheduling")];
+    let scheduling = directory
+        .create_or_open(&trx, &path, None, None)
+        .await
+        .expect("failed to create directory");
+    let class_subspace = scheduling
+        .subspace(&"classes")
+        .expect("should get class subspace");
+    let attends_subspace = scheduling
+        .subspace(&"attends")
+        .expect("should get class subspace");
+
+    let attends_key = attends_subspace.pack(&(student, class_name));
+    if trx
+        .get(&attends_key, true)
+        .await
+        .expect("should get attends")
+        .is_none()
+    {
+        panic!("Student not enrolled for this course");
+    }
+
+    let class_key = class_subspace.pack(&class_name);
+    let available_seats: i64 = unpack(
+        &trx.get(&class_key, true)
+            .await
+            .expect("get failed")
+            .expect("class seats not initialized"),
+    )
+    .expect("failed to unpack");
+    let available_seats = available_seats + 1;
+
+    trx.set(&class_key, &pack(&available_seats));
+    trx.clear(&attends_key);
+    Ok(())
+}
